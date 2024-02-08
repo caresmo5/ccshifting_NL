@@ -4,16 +4,7 @@ from datetime import datetime, timedelta, time
 import random
 
 
-# INTENTAR:
-#   Podría probar a tener en cuenta la productividad media de cada agente (si lo viera viable, por día de la semana y por horas).
-#   A lo mejor sería hacer una tabla con las siguientes columnas: País, Día, Hora, Agente, Productividad.
-#   Incluso podría sacar las horas cada 10min y, como sé quién está y quien no a ese detalle, puedo sacar los agentes que hay cada 10 min.
-#   Como sé los agentes concretos, sé las contestadas concretas cada 10min (productividad por hora / 6). Sumando todo el día, lo tengo.
-#   Para esto podría repetir todas las horas cada 10min tantas veces como agentes haya. Luego poner al lado los agentes repetidos.
-#   Luego una columna de 1s. Como sé en qué 10min no está cada agente, hago: si es este agente y esta hora (en la que está descansando),
-#   pon un 0. Entonces elimino los 0s de la columna. Para cada agente, sustituyo los 1s por su respectiva productividad.
-#   OJO, así lo que estoy diciendo es que cada agente está trabajando de 7h a 22h excepto en sus pausas. Tendría que poner 1s solo en las
-#   horas en las que trabajan. Esto ya para más adelante.
+# NO ESTOY CONTANDO CON CHRISTOPHE NI DESPUÉS DE LA BAJA
 
 
 
@@ -73,9 +64,14 @@ def pausasNL(dia,planning,definitivo,prevision):
     planning = planning[planning[dia] != 'LI']
     planning = planning[planning[dia] != 'EJ']
     planning = planning[planning[dia] != '0']
+    planning = planning[planning[dia] != 'Baja']
+    planning = planning[planning['Nombre'] != 'VANDERFAEILLIE, CHRISTOPHE FRANK']
     planning = planning.sort_values(by=dia)
 
-    
+    # Sustituyo el M13:30 de Carolien y el M12 de Gijsbregts para evitar errores
+    planning[dia] = planning[dia].replace({'M13:30': 'M11:30'})
+    planning[dia] = planning[dia].replace({'T14:30': 'M12'})
+
     preferencias = pd.read_excel('U:\Turnos\Horarios y pausas\Definitivo\PreferenciasNL.xlsx')
     preferencias.rename(columns={'Nombre':'Agente','Agente':'Nombre'}, inplace=True)
     planning = planning.merge(preferencias, on = 'Nombre')
@@ -106,7 +102,7 @@ def pausasNL(dia,planning,definitivo,prevision):
 
     agentes = np.dot(turnos,contador)
 
-    productividad = 1
+    productividad = 2.5
     tope_accesibilidad = 0.97
 
     contestadas = agentes * productividad
@@ -650,6 +646,9 @@ def pausasNL(dia,planning,definitivo,prevision):
 
     prevision = pd.concat([prevision,auxprevision], ignore_index = True)
 
+    print(dia)
+    print(planning)
+    
     return definitivo, prevision
 
 
@@ -666,7 +665,9 @@ diferencia = fin - inicio
 diferencia = diferencia.days + 1
 
 for i in range(diferencia):
-    definitivo, prevision = pausasNL(inicio + timedelta(days=i),planning,definitivo,prevision)
+    dia = inicio + timedelta(days=i)
+    if dia.weekday() != 6:
+        definitivo, prevision = pausasNL(dia,planning,definitivo,prevision)
 
 columnas_a_concatenar = definitivo.iloc[:, 11:]
 
